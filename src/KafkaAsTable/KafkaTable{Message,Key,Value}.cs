@@ -56,15 +56,17 @@ namespace KafkaAsTable
             _consumerFactory = consumerFactory;
         }
 
-        private async Task<Dictionary<Partition, WatermarkOffsets>> GetOffsetsAsync(CancellationToken ct)
+        private IEnumerable<PartitionMetadata> GetPartitionsMeta()
         {
             var metadataOfParticularTopic = _adminClient.GetMetadata(
-               _topicName,
-               TimeSpan.FromSeconds(_initTimeoutSecond));
+              _topicName,
+              TimeSpan.FromSeconds(_initTimeoutSecond));
+            return metadataOfParticularTopic.Topics.Single().Partitions;
+        }
 
-            var partitionsMetadata = metadataOfParticularTopic.Topics.Single().Partitions;
-
-            var topicPartitions = partitionsMetadata.Select(partition =>
+        private async Task<Dictionary<Partition, WatermarkOffsets>> GetOffsetsAsync(CancellationToken ct)
+        {
+            var topicPartitions = GetPartitionsMeta().Select(partition =>
                 new TopicPartition(
                     _topicName,
                     new Partition(partition.PartitionId)));
