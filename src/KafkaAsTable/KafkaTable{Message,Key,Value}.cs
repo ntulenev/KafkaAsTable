@@ -20,9 +20,9 @@ namespace KafkaAsTable
     /// <typeparam name="Value">Table value</typeparam>
     public class KafkaTable<Message, Key, Value> where Key : notnull
     {
-        public event EventHandler<KafkaDumpArgs<Key, Value>>? OnDumpLoaded;
+        public event EventHandler<KafkaTableArgs<Key, Value>>? OnDumpLoaded;
 
-        public event EventHandler<KafkaDumpArgs<Key, Value>>? OnStateUpdated;
+        public event EventHandler<KafkaTableArgs<Key, Value>>? OnStateUpdated;
 
         public ImmutableDictionary<Key, Value> TableSnapshot { get; private set; } = null!;
 
@@ -135,7 +135,7 @@ namespace KafkaAsTable
             var items = consumedEntities.SelectMany(singleConsumerResults => singleConsumerResults).ToList();
             TableSnapshot = ImmutableDictionary.CreateRange(items);
 
-            OnDumpLoaded?.Invoke(this, new KafkaDumpArgs<Key, Value>(TableSnapshot));
+            OnDumpLoaded?.Invoke(this, new KafkaTableArgs<Key, Value>(TableSnapshot));
 
             UpdateAfterDump(offsets, ct);
         }
@@ -160,7 +160,7 @@ namespace KafkaAsTable
                     var result = consumer.Consume(ct);
                     var (k, v) = _deserializer(result.Message.Value);
                     TableSnapshot = TableSnapshot.SetItem(k, v);
-                    OnStateUpdated?.Invoke(this, new KafkaDumpArgs<Key, Value>(TableSnapshot));
+                    OnStateUpdated?.Invoke(this, new KafkaTableArgs<Key, Value>(TableSnapshot));
                 }
                 while (!ct.IsCancellationRequested);
             }
