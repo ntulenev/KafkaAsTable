@@ -24,7 +24,7 @@ namespace KafkaAsTable
 
         public event EventHandler<KafkaTableArgs<Key, Value>>? OnStateUpdated;
 
-        public ImmutableDictionary<Key, Value> TableSnapshot { get; private set; } = null!;
+        public ImmutableDictionary<Key, Value> Snapshot { get; private set; } = null!;
 
         public KafkaTable(Func<Message, (Key, Value)> deserializer,
                           Func<IConsumer<Ignore, Message>> consumerFactory,
@@ -52,24 +52,13 @@ namespace KafkaAsTable
             _adminClient = adminClient;
             _topicName = topicName;
             _deserializer = deserializer;
-            _initTimeoutSecond = initTimeoutSeconds;
+            _initTimeoutSeconds = initTimeoutSeconds;
             _consumerFactory = consumerFactory;
-        }
-
-        private IEnumerable<PartitionMetadata> GetPartitionsMeta()
-        {
-            var metadataOfParticularTopic = _adminClient.GetMetadata(
-              _topicName,
-              TimeSpan.FromSeconds(_initTimeoutSecond));
-            return metadataOfParticularTopic.Topics.Single().Partitions;
         }
 
         private async Task<Dictionary<Partition, WatermarkOffsets>> GetOffsetsAsync(CancellationToken ct)
         {
-            var topicPartitions = GetPartitionsMeta().Select(partition =>
-                new TopicPartition(
-                    _topicName,
-                    new Partition(partition.PartitionId)));
+            var topicPartitions = _adminClient.SplitTopicOnPartitions(_topicName, _initTimeoutSeconds);
 
             using var consumer = _consumerFactory();
 
@@ -80,7 +69,7 @@ namespace KafkaAsTable
                         {
                             var watermarkOffsets = consumer.QueryWatermarkOffsets(
                                 topicPartition,
-                                TimeSpan.FromSeconds(_initTimeoutSecond));
+                                TimeSpan.FromSeconds(_initTimeoutSeconds));
 
                             return
                             (topicPartition.Partition,
@@ -101,43 +90,42 @@ namespace KafkaAsTable
 
         public async Task StartUpdatingAsync(CancellationToken ct)
         {
-            var offsets = await GetOffsetsAsync(ct);
+            var offsets = await GetOffsetsAsync(ct).ConfigureAwait(false);
 
-            var consumedEntities = await Task.WhenAll(offsets.Where(kv => kv.Value.High > kv.Value.Low)
-                .Select(kv =>
+            var consumedEntities = await Task.WhenAll(offsets.GetAwaliableToRead()
+                .Select(endOfPartition =>
                     Task.Run(() =>
                     {
-                        IConsumer<Ignore, Message>? consumer = null;
+                        using var consumer = _consumerFactory();
 
-                        var entitiesInTsk = new List<KeyValuePair<Key, Value>>();
+                        var items = new List<KeyValuePair<Key, Value>>();
 
                         try
                         {
-                            consumer = _consumerFactory();
-                            consumer.Assign(new TopicPartition(_topicName, kv.Key));
+                            consumer.Assign(new TopicPartition(_topicName, endOfPartition.Partition));
 
                             ConsumeResult<Ignore, Message> result = default!;
-
                             do
                             {
                                 var (key, value) = ConsumeItem(consumer, ct);
-                                entitiesInTsk.Add(new KeyValuePair<Key, Value>(key, value));
+                                items.Add(new KeyValuePair<Key, Value>(key, value));
 
-                            } while (IsWatermarkAchieved(result.Offset, kv.Value));
+                            } while (IsWatermarkAchieved(result.Offset, endOfPartition.Offset));
 
-                            return entitiesInTsk;
+                            return items;
                         }
                         finally
                         {
                             consumer?.Close();
-                            consumer?.Dispose();
                         }
+
                     }))).ConfigureAwait(false);
 
-            var items = consumedEntities.SelectMany(singleConsumerResults => singleConsumerResults).ToList();
-            TableSnapshot = ImmutableDictionary.CreateRange(items);
+            var items = consumedEntities.SelectMany(singleConsumerResults => singleConsumerResults);
 
-            OnDumpLoaded?.Invoke(this, new KafkaTableArgs<Key, Value>(TableSnapshot));
+            Snapshot = ImmutableDictionary.CreateRange(items);
+
+            OnDumpLoaded?.Invoke(this, new KafkaTableArgs<Key, Value>(Snapshot));
 
             ContinueUpdateAfterDump(offsets, ct);
         }
@@ -150,31 +138,29 @@ namespace KafkaAsTable
 
         private void ContinueUpdateAfterDump(Dictionary<Partition, WatermarkOffsets> offsets, CancellationToken ct)
         {
-            IConsumer<Ignore, Message>? consumer = null;
-
+            using var consumer = _consumerFactory();
             try
             {
-                consumer = _consumerFactory();
 
                 consumer.Assign(offsets
-                    .Select(kv => new TopicPartitionOffset(
+                    .Select(oldEndOfPartition => new TopicPartitionOffset(
                         new TopicPartition(
                             _topicName,
-                            kv.Key),
-                        kv.Value.High)));
+                            oldEndOfPartition.Key),
+                        oldEndOfPartition.Value.High)));
 
                 do
                 {
                     var (k, v) = ConsumeItem(consumer, ct);
-                    TableSnapshot = TableSnapshot.SetItem(k, v);
-                    OnStateUpdated?.Invoke(this, new KafkaTableArgs<Key, Value>(TableSnapshot));
+                    Snapshot = Snapshot.SetItem(k, v);
+
+                    OnStateUpdated?.Invoke(this, new KafkaTableArgs<Key, Value>(Snapshot));
                 }
                 while (!ct.IsCancellationRequested);
             }
             finally
             {
                 consumer?.Close();
-                consumer?.Dispose();
             }
         }
 
@@ -182,8 +168,6 @@ namespace KafkaAsTable
         private readonly IAdminClient _adminClient;
         private readonly Func<IConsumer<Ignore, Message>> _consumerFactory;
         private readonly string _topicName;
-        private readonly int _initTimeoutSecond;
-
-
+        private readonly int _initTimeoutSeconds;
     }
 }
