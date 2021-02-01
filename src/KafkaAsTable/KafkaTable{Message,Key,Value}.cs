@@ -97,6 +97,8 @@ namespace KafkaAsTable
             }
         }
 
+        private bool IsWatermarkAchieved(Offset offset, WatermarkOffsets watermark) => offset != watermark.High - 1;
+
         public async Task StartUpdatingAsync(CancellationToken ct)
         {
             var offsets = await GetOffsetsAsync(ct);
@@ -118,12 +120,10 @@ namespace KafkaAsTable
 
                             do
                             {
-                                result = consumer.Consume(ct);
-                                var (key, value) = _deserializer(result.Message.Value);
+                                var (key, value) = ConsumeItem(consumer, ct);
                                 entitiesInTsk.Add(new KeyValuePair<Key, Value>(key, value));
 
-
-                            } while (result.Offset != kv.Value.High - 1);
+                            } while (IsWatermarkAchieved(result.Offset, kv.Value));
 
                             return entitiesInTsk;
                         }
@@ -139,10 +139,16 @@ namespace KafkaAsTable
 
             OnDumpLoaded?.Invoke(this, new KafkaTableArgs<Key, Value>(TableSnapshot));
 
-            UpdateAfterDump(offsets, ct);
+            ContinueUpdateAfterDump(offsets, ct);
         }
 
-        private void UpdateAfterDump(Dictionary<Partition, WatermarkOffsets> offsets, CancellationToken ct)
+        private (Key key, Value value) ConsumeItem(IConsumer<Ignore, Message> consumer, CancellationToken ct)
+        {
+            var result = consumer.Consume(ct);
+            return _deserializer(result.Message.Value);
+        }
+
+        private void ContinueUpdateAfterDump(Dictionary<Partition, WatermarkOffsets> offsets, CancellationToken ct)
         {
             IConsumer<Ignore, Message>? consumer = null;
 
@@ -159,8 +165,7 @@ namespace KafkaAsTable
 
                 do
                 {
-                    var result = consumer.Consume(ct);
-                    var (k, v) = _deserializer(result.Message.Value);
+                    var (k, v) = ConsumeItem(consumer, ct);
                     TableSnapshot = TableSnapshot.SetItem(k, v);
                     OnStateUpdated?.Invoke(this, new KafkaTableArgs<Key, Value>(TableSnapshot));
                 }
