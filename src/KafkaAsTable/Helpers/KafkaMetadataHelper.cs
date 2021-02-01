@@ -35,7 +35,6 @@ namespace KafkaAsTable.Helpers
             if (source is null)
             {
                 throw new ArgumentNullException(nameof(source));
-
             }
 
             return source.Where(kv => kv.Value.High > kv.Value.Low).Select(x => (x.Key, x.Value));
