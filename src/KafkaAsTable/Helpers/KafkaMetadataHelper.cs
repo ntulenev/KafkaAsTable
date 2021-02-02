@@ -39,5 +39,20 @@ namespace KafkaAsTable.Helpers
 
             return source.Where(kv => kv.Value.High > kv.Value.Low).Select(x => (x.Key, x.Value));
         }
+
+        public static bool IsWatermarkAchieved<K,V>(this ConsumeResult<K,V> consumeResult, WatermarkOffsets watermark)
+        {
+            if (consumeResult is null)
+            {
+                throw new ArgumentNullException(nameof(consumeResult));
+            }
+
+            if (watermark is null)
+            {
+                throw new ArgumentNullException(nameof(watermark));
+            }
+
+            return consumeResult.Offset != watermark.High - 1;
+        }
     }
 }
