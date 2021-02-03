@@ -119,7 +119,7 @@ namespace KafkaAsTable
 
                     }))).ConfigureAwait(false);
 
-            var items = consumedEntities.SelectMany(singleConsumerResults => singleConsumerResults);
+            var items = consumedEntities.SelectMany(сonsumerResults => сonsumerResults);
 
             Snapshot = ImmutableDictionary.CreateRange(items);
 
@@ -139,22 +139,15 @@ namespace KafkaAsTable
             using var consumer = _consumerFactory();
             try
             {
+                consumer.AssignToOffset(offsets, _topicName);
 
-                consumer.Assign(offsets
-                    .Select(oldEndOfPartition => new TopicPartitionOffset(
-                        new TopicPartition(
-                            _topicName,
-                            oldEndOfPartition.Key),
-                        oldEndOfPartition.Value.High)));
-
-                do
+                while (!ct.IsCancellationRequested)
                 {
                     var (k, v) = ConsumeItem(consumer, ct);
                     Snapshot = Snapshot.SetItem(k, v);
 
                     OnStateUpdated?.Invoke(this, new KafkaUpdateTableArgs<Key, Value>(Snapshot, k));
                 }
-                while (!ct.IsCancellationRequested);
             }
             finally
             {
