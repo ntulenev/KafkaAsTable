@@ -86,8 +86,6 @@ namespace KafkaAsTable
             }
         }
 
-        private bool IsWatermarkAchieved(Offset offset, WatermarkOffsets watermark) => offset != watermark.High - 1;
-
         public async Task StartUpdatingAsync(CancellationToken ct)
         {
             var offsets = await GetOffsetsAsync(ct).ConfigureAwait(false);
@@ -110,7 +108,7 @@ namespace KafkaAsTable
                                 var (key, value) = ConsumeItem(consumer, ct);
                                 items.Add(new KeyValuePair<Key, Value>(key, value));
 
-                            } while (IsWatermarkAchieved(result.Offset, endOfPartition.Offset));
+                            } while (result.IsWatermarkAchieved(endOfPartition.Offset));
 
                             return items;
                         }
