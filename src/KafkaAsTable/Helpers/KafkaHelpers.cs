@@ -49,7 +49,7 @@ namespace KafkaAsTable.Helpers
             return consumeResult.Offset != watermark.High - 1;
         }
 
-        public static void AssignToOffset<K, V>(this IConsumer<K, V> consumer, Dictionary<Partition, WatermarkOffsets> offsets, string topicName)
+        public static void AssignToOffset<K, V>(this IConsumer<K, V> consumer, IEnumerable<(Partition Key, WatermarkOffsets Value)> offsets, string topicName)
         {
             if (consumer is null)
             {

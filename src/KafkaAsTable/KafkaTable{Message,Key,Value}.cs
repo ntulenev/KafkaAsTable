@@ -9,6 +9,7 @@ using Confluent.Kafka;
 
 using KafkaAsTable.Events;
 using KafkaAsTable.Helpers;
+using KafkaAsTable.Model;
 
 namespace KafkaAsTable
 {
@@ -49,48 +50,17 @@ namespace KafkaAsTable
                 throw new ArgumentNullException(nameof(consumerFactory));
             }
 
-            _adminClient = adminClient;
             _topicName = topicName;
             _deserializer = deserializer;
-            _initTimeoutSeconds = initTimeoutSeconds;
             _consumerFactory = consumerFactory;
-        }
-
-        private async Task<Dictionary<Partition, WatermarkOffsets>> GetOffsetsAsync(CancellationToken ct)
-        {
-            var topicPartitions = _adminClient.SplitTopicOnPartitions(_topicName, _initTimeoutSeconds);
-
-            using var consumer = _consumerFactory();
-
-            try
-            {
-                var initialOffsets = await Task.WhenAll(topicPartitions.Select(
-                        topicPartition => Task.Run(() =>
-                        {
-                            var watermarkOffsets = consumer.QueryWatermarkOffsets(
-                                topicPartition,
-                                TimeSpan.FromSeconds(_initTimeoutSeconds));
-
-                            return
-                            (topicPartition.Partition,
-                            WatermarkOffsets: watermarkOffsets);
-                        }, ct))).ConfigureAwait(false);
-
-                return initialOffsets.ToDictionary(
-                    topicPartition => topicPartition.Partition,
-                    topicPartition => topicPartition.WatermarkOffsets);
-            }
-            finally
-            {
-                consumer.Close();
-            }
+            _topicOffsets = new TopicOffsets<Ignore, Message>(_topicName, consumerFactory, adminClient, initTimeoutSeconds);
         }
 
         public async Task StartUpdatingAsync(CancellationToken ct)
         {
-            var offsets = await GetOffsetsAsync(ct).ConfigureAwait(false);
+            var offsets = await _topicOffsets.LoadWatermarksAsync(ct);
 
-            var consumedEntities = await Task.WhenAll(offsets.GetAwaliableToRead()
+            var consumedEntities = await Task.WhenAll(offsets
                 .Select(endOfPartition =>
                     Task.Run(() =>
                     {
@@ -134,7 +104,7 @@ namespace KafkaAsTable
             return _deserializer(result.Message.Value);
         }
 
-        private void ContinueUpdateAfterDump(Dictionary<Partition, WatermarkOffsets> offsets, CancellationToken ct)
+        private void ContinueUpdateAfterDump(IEnumerable<(Partition, WatermarkOffsets)> offsets, CancellationToken ct)
         {
             using var consumer = _consumerFactory();
             try
@@ -156,9 +126,8 @@ namespace KafkaAsTable
         }
 
         private readonly Func<Message, (Key, Value)> _deserializer;
-        private readonly IAdminClient _adminClient;
         private readonly Func<IConsumer<Ignore, Message>> _consumerFactory;
+        private readonly TopicOffsets<Ignore, Message> _topicOffsets;
         private readonly string _topicName;
-        private readonly int _initTimeoutSeconds;
     }
 }
