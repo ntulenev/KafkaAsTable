@@ -10,7 +10,9 @@ namespace KafkaAsTable.Helpers
 {
     public static class KafkaHelpers
     {
-        public static IEnumerable<TopicPartition> SplitTopicOnPartitions(this IAdminClient adminClient, string topicName, int timeout)
+        public static IEnumerable<TopicPartition> SplitTopicOnPartitions(this IAdminClient adminClient,
+                                                                              string topicName,
+                                                                              int timeout)
         {
             if (adminClient is null)
             {

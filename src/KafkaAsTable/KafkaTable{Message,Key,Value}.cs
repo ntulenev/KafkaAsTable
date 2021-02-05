@@ -52,7 +52,13 @@ namespace KafkaAsTable
 
             _deserializer = deserializer;
             _consumerFactory = consumerFactory;
-            _topicOffsets = new TopicOffsetsExtractor<Ignore, Message>(topicName, consumerFactory, adminClient, initTimeoutSeconds);
+            _topicOffsets = new TopicOffsetsExtractor<Ignore, Message>
+                (
+                topicName,
+                consumerFactory,
+                adminClient,
+                initTimeoutSeconds
+                );
         }
 
 
@@ -66,7 +72,6 @@ namespace KafkaAsTable
                     {
                         using var consumer = _consumerFactory();
                         var items = new List<KeyValuePair<Key, Value>>();
-
                         try
                         {
                             consumer.Assign(endOfPartition.CreatePartition());

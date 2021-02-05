@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +12,10 @@ namespace KafkaAsTable.Model
 {
     public class TopicOffsetsExtractor<K, V>
     {
-        public TopicOffsetsExtractor(string topicName, Func<IConsumer<K, V>> consumerFactory, IAdminClient adminClient, int intTimeoutSeconds)
+        public TopicOffsetsExtractor(string topicName,
+                                     Func<IConsumer<K, V>> consumerFactory,
+                                     IAdminClient adminClient,
+                                     int intTimeoutSeconds)
         {
             KafkaValidationHelper.ValidateTopicName(topicName);
 
@@ -28,11 +30,8 @@ namespace KafkaAsTable.Model
             }
 
             _intTimeoutSeconds = intTimeoutSeconds;
-
             _adminClient = adminClient;
-
             _topicName = topicName;
-
             _consumerFactory = consumerFactory;
         }
 
@@ -61,16 +60,11 @@ namespace KafkaAsTable.Model
             {
                 consumer.Close();
             }
-
-
         }
 
         private readonly string _topicName;
-
         private readonly IAdminClient _adminClient;
-
         private readonly int _intTimeoutSeconds;
-
         private readonly Func<IConsumer<K, V>> _consumerFactory;
     }
 }
