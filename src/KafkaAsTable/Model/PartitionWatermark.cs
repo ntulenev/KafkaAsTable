@@ -34,8 +34,6 @@ namespace KafkaAsTable.Model
         public TopicPartition CreatePartition() =>
             new TopicPartition(_topicName, _partition);
 
-        public Partition Partition => _partition;
-
         public WatermarkOffsets Watermark => _offset;
 
         private readonly Partition _partition;
