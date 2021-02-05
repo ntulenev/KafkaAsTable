@@ -27,35 +27,5 @@ namespace KafkaAsTable.Helpers
 
             return partitions.Select(partition => new TopicPartition(topicName, new Partition(partition.PartitionId)));
         }
-
-        public static bool IsWatermarkAchieved<K, V>(this ConsumeResult<K, V> consumeResult, WatermarkOffsets watermark)
-        {
-            if (consumeResult is null)
-            {
-                throw new ArgumentNullException(nameof(consumeResult));
-            }
-
-            if (watermark is null)
-            {
-                throw new ArgumentNullException(nameof(watermark));
-            }
-
-            return consumeResult.Offset != watermark.High - 1;
-        }
-
-        public static void AssignToOffset<K, V>(this IConsumer<K, V> consumer, IEnumerable<PartitionWatermark> offsets)
-        {
-            if (consumer is null)
-            {
-                throw new ArgumentNullException(nameof(consumer));
-            }
-
-            if (offsets is null)
-            {
-                throw new ArgumentNullException(nameof(offsets));
-            }
-
-            consumer.Assign(offsets.Select(oldEndOfPartition => oldEndOfPartition.CreateTopicPartitionWithHighOffset()));
-        }
     }
 }

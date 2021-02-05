@@ -28,13 +28,28 @@ namespace KafkaAsTable.Model
 
         public bool IsReadyToRead() => _offset.High > _offset.Low;
 
+        public bool IsWatermarkAchievedBy<K, V>(ConsumeResult<K, V> consumeResult)
+        {
+            if (consumeResult is null)
+            {
+                throw new ArgumentNullException(nameof(consumeResult));
+            }
+
+            return consumeResult.Offset != _offset.High - 1;
+        }
+
         public TopicPartitionOffset CreateTopicPartitionWithHighOffset() =>
             new TopicPartitionOffset(new TopicPartition(_topicName, _partition), _offset.High);
 
-        public TopicPartition CreatePartition() =>
-            new TopicPartition(_topicName, _partition);
+        public void AssingWithConsumer<K,V>(IConsumer<K, V> consumer)
+        {
+            if (consumer is null)
+            {
+                throw new ArgumentNullException(nameof(consumer));
+            }
 
-        public WatermarkOffsets Watermark => _offset;
+            consumer.Assign(new TopicPartition(_topicName, _partition));
+        }
 
         private readonly Partition _partition;
         private readonly WatermarkOffsets _offset;

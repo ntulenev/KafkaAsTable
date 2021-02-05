@@ -29,21 +29,17 @@ namespace KafkaAsTable
 
         public KafkaTable(Func<Message, (Key, Value)> deserializer,
                           Func<IConsumer<Ignore, Message>> consumerFactory,
-                          IAdminClient adminClient,
-                          string topicName,
-                          int initTimeoutSeconds = 5)
+                          ITopicWatermarkLoader topicWatermarkLoader)
         {
             if (deserializer is null)
             {
                 throw new ArgumentNullException(nameof(deserializer));
             }
 
-            if (adminClient is null)
+            if (topicWatermarkLoader is null)
             {
-                throw new ArgumentNullException(nameof(adminClient));
+                throw new ArgumentNullException(nameof(topicWatermarkLoader));
             }
-
-            KafkaValidationHelper.ValidateTopicName(topicName);
 
             if (consumerFactory is null)
             {
@@ -52,55 +48,49 @@ namespace KafkaAsTable
 
             _deserializer = deserializer;
             _consumerFactory = consumerFactory;
-            _topicOffsets = new TopicOffsetsExtractor<Ignore, Message>
-                (
-                topicName,
-                consumerFactory,
-                adminClient,
-                initTimeoutSeconds
-                );
+            _topicWatermarkLoader = topicWatermarkLoader;
         }
 
+        private IEnumerable<KeyValuePair<Key, Value>> ConsumeFromWatermark(PartitionWatermark watermark, CancellationToken ct)
+        {
+            using var consumer = _consumerFactory();
+            try
+            {
+                watermark.AssingWithConsumer(consumer);
+                ConsumeResult<Ignore, Message> result = default!;
+                do
+                {
+                    var (key, value) = ConsumeItem(consumer, ct);
+                    yield return new KeyValuePair<Key, Value>(key, value);
+
+                } while (watermark.IsWatermarkAchievedBy(result));
+            }
+            finally
+            {
+                consumer?.Close();
+            }
+        }
 
         private async Task<IEnumerable<KeyValuePair<Key, Value>>> ConsumeInitialAsync
-            (IEnumerable<PartitionWatermark> offsets,
+            (TopicWatermark topicWatermark,
             CancellationToken ct)
         {
-            var consumedEntities = await Task.WhenAll(offsets
-                .Select(endOfPartition =>
-                    Task.Run(() =>
-                    {
-                        using var consumer = _consumerFactory();
-                        var items = new List<KeyValuePair<Key, Value>>();
-                        try
-                        {
-                            consumer.Assign(endOfPartition.CreatePartition());
-                            ConsumeResult<Ignore, Message> result = default!;
-                            do
-                            {
-                                var (key, value) = ConsumeItem(consumer, ct);
-                                items.Add(new KeyValuePair<Key, Value>(key, value));
-
-                            } while (result.IsWatermarkAchieved(endOfPartition.Watermark));
-                            return items;
-                        }
-                        finally
-                        {
-                            consumer?.Close();
-                        }
-
-                    }))).ConfigureAwait(false);
+            var consumedEntities = await Task.WhenAll(topicWatermark.Watermarks
+                .Select(watermark =>
+                            Task.Run(() => ConsumeFromWatermark(watermark, ct))
+                       )
+                ).ConfigureAwait(false);
 
             return consumedEntities.SelectMany(сonsumerResults => сonsumerResults);
         }
 
         public async Task StartUpdatingAsync(CancellationToken ct)
         {
-            var offsets = await _topicOffsets.LoadWatermarksAsync(ct);
-            var items = await ConsumeInitialAsync(offsets, ct);
-            Snapshot = ImmutableDictionary.CreateRange(items);
+            var topicWatermark = await _topicWatermarkLoader.LoadWatermarksAsync(_consumerFactory, ct);
+            var initialState = await ConsumeInitialAsync(topicWatermark, ct);
+            Snapshot = ImmutableDictionary.CreateRange(initialState);
             OnDumpLoaded?.Invoke(this, new KafkaInitTableArgs<Key, Value>(Snapshot));
-            ContinueUpdateAfterDump(offsets, ct);
+            ContinueFromWatermark(topicWatermark, ct);
         }
 
         private (Key key, Value value) ConsumeItem(IConsumer<Ignore, Message> consumer, CancellationToken ct)
@@ -109,12 +99,12 @@ namespace KafkaAsTable
             return _deserializer(result.Message.Value);
         }
 
-        private void ContinueUpdateAfterDump(IEnumerable<PartitionWatermark> offsets, CancellationToken ct)
+        private void ContinueFromWatermark(TopicWatermark topicWatermark, CancellationToken ct)
         {
             using var consumer = _consumerFactory();
             try
             {
-                consumer.AssignToOffset(offsets);
+                topicWatermark.AssignWithConsumer(consumer);
                 while (!ct.IsCancellationRequested)
                 {
                     var (k, v) = ConsumeItem(consumer, ct);
@@ -130,6 +120,6 @@ namespace KafkaAsTable
 
         private readonly Func<Message, (Key, Value)> _deserializer;
         private readonly Func<IConsumer<Ignore, Message>> _consumerFactory;
-        private readonly TopicOffsetsExtractor<Ignore, Message> _topicOffsets;
+        private readonly ITopicWatermarkLoader _topicWatermarkLoader;
     }
 }
