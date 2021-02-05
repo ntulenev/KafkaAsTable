@@ -8,7 +8,7 @@ using Confluent.Kafka;
 using KafkaAsTable.Helpers;
 using KafkaAsTable.Model;
 
-namespace KafkaAsTable
+namespace KafkaAsTable.Metadata
 {
     public class TopicWatermarkLoader : ITopicWatermarkLoader
     {

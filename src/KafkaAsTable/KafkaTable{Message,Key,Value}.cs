@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Confluent.Kafka;
 
 using KafkaAsTable.Events;
-using KafkaAsTable.Helpers;
+using KafkaAsTable.Metadata;
 using KafkaAsTable.Model;
 
 namespace KafkaAsTable

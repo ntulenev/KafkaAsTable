@@ -4,8 +4,6 @@ using System.Linq;
 
 using Confluent.Kafka;
 
-using KafkaAsTable.Model;
-
 namespace KafkaAsTable.Helpers
 {
     public static class KafkaHelpers
