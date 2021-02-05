@@ -11,9 +11,9 @@ using KafkaAsTable.Helpers;
 
 namespace KafkaAsTable.Model
 {
-    public class TopicOffsets<K, V>
+    public class TopicOffsetsExtractor<K, V>
     {
-        public TopicOffsets(string topicName, Func<IConsumer<K, V>> consumerFactory, IAdminClient adminClient, int intTimeoutSeconds)
+        public TopicOffsetsExtractor(string topicName, Func<IConsumer<K, V>> consumerFactory, IAdminClient adminClient, int intTimeoutSeconds)
         {
             KafkaValidationHelper.ValidateTopicName(topicName);
 
@@ -36,7 +36,7 @@ namespace KafkaAsTable.Model
             _consumerFactory = consumerFactory;
         }
 
-        public async Task<IEnumerable<(Partition Partition, WatermarkOffsets Offset)>> LoadWatermarksAsync(CancellationToken ct)
+        public async Task<IEnumerable<PartitionWatermark>> LoadWatermarksAsync(CancellationToken ct)
         {
             using var consumer = _consumerFactory();
 
@@ -51,14 +51,11 @@ namespace KafkaAsTable.Model
                                     topicPartition,
                                     TimeSpan.FromSeconds(_intTimeoutSeconds));
 
-                                return
-                                (topicPartition.Partition,
-                                WatermarkOffsets: watermarkOffsets);
+                                return new PartitionWatermark(_topicName, watermarkOffsets, topicPartition.Partition);
+
                             }, ct))).ConfigureAwait(false);
 
-                return initialOffsets.ToDictionary(
-                    topicPartition => topicPartition.Partition,
-                    topicPartition => topicPartition.WatermarkOffsets).GetAwaliableToRead();
+                return initialOffsets.Where(item => item.IsReadyToRead());
             }
             finally
             {

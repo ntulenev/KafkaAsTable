@@ -49,11 +49,9 @@ namespace KafkaAsTable
             {
                 throw new ArgumentNullException(nameof(consumerFactory));
             }
-
-            _topicName = topicName;
             _deserializer = deserializer;
             _consumerFactory = consumerFactory;
-            _topicOffsets = new TopicOffsets<Ignore, Message>(_topicName, consumerFactory, adminClient, initTimeoutSeconds);
+            _topicOffsets = new TopicOffsetsExtractor<Ignore, Message>(topicName, consumerFactory, adminClient, initTimeoutSeconds);
         }
 
         public async Task StartUpdatingAsync(CancellationToken ct)
@@ -70,7 +68,7 @@ namespace KafkaAsTable
 
                         try
                         {
-                            consumer.Assign(new TopicPartition(_topicName, endOfPartition.Partition));
+                            consumer.Assign(endOfPartition.CreatePartition());
 
                             ConsumeResult<Ignore, Message> result = default!;
                             do
@@ -78,7 +76,7 @@ namespace KafkaAsTable
                                 var (key, value) = ConsumeItem(consumer, ct);
                                 items.Add(new KeyValuePair<Key, Value>(key, value));
 
-                            } while (result.IsWatermarkAchieved(endOfPartition.Offset));
+                            } while (result.IsWatermarkAchieved(endOfPartition.Watermark));
 
                             return items;
                         }
@@ -104,12 +102,12 @@ namespace KafkaAsTable
             return _deserializer(result.Message.Value);
         }
 
-        private void ContinueUpdateAfterDump(IEnumerable<(Partition, WatermarkOffsets)> offsets, CancellationToken ct)
+        private void ContinueUpdateAfterDump(IEnumerable<PartitionWatermark> offsets, CancellationToken ct)
         {
             using var consumer = _consumerFactory();
             try
             {
-                consumer.AssignToOffset(offsets, _topicName);
+                consumer.AssignToOffset(offsets);
 
                 while (!ct.IsCancellationRequested)
                 {
@@ -127,7 +125,6 @@ namespace KafkaAsTable
 
         private readonly Func<Message, (Key, Value)> _deserializer;
         private readonly Func<IConsumer<Ignore, Message>> _consumerFactory;
-        private readonly TopicOffsets<Ignore, Message> _topicOffsets;
-        private readonly string _topicName;
+        private readonly TopicOffsetsExtractor<Ignore, Message> _topicOffsets;
     }
 }

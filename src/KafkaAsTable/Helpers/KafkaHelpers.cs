@@ -4,6 +4,8 @@ using System.Linq;
 
 using Confluent.Kafka;
 
+using KafkaAsTable.Model;
+
 namespace KafkaAsTable.Helpers
 {
     public static class KafkaHelpers
@@ -24,16 +26,6 @@ namespace KafkaAsTable.Helpers
             return partitions.Select(partition => new TopicPartition(topicName, new Partition(partition.PartitionId)));
         }
 
-        public static IEnumerable<(Partition Partition, WatermarkOffsets Offset)> GetAwaliableToRead(this Dictionary<Partition, WatermarkOffsets> source)
-        {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            return source.Where(kv => kv.Value.High > kv.Value.Low).Select(x => (x.Key, x.Value));
-        }
-
         public static bool IsWatermarkAchieved<K, V>(this ConsumeResult<K, V> consumeResult, WatermarkOffsets watermark)
         {
             if (consumeResult is null)
@@ -49,7 +41,7 @@ namespace KafkaAsTable.Helpers
             return consumeResult.Offset != watermark.High - 1;
         }
 
-        public static void AssignToOffset<K, V>(this IConsumer<K, V> consumer, IEnumerable<(Partition Key, WatermarkOffsets Value)> offsets, string topicName)
+        public static void AssignToOffset<K, V>(this IConsumer<K, V> consumer, IEnumerable<PartitionWatermark> offsets)
         {
             if (consumer is null)
             {
@@ -61,9 +53,7 @@ namespace KafkaAsTable.Helpers
                 throw new ArgumentNullException(nameof(offsets));
             }
 
-            KafkaValidationHelper.ValidateTopicName(topicName);
-
-            consumer.Assign(offsets.Select(oldEndOfPartition => new TopicPartitionOffset(new TopicPartition(topicName, oldEndOfPartition.Key), oldEndOfPartition.Value.High)));
+            consumer.Assign(offsets.Select(oldEndOfPartition => oldEndOfPartition.CreateTopicPartitionWithHighOffset()));
         }
     }
 }
