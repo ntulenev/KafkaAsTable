@@ -49,27 +49,27 @@ namespace KafkaAsTable
             {
                 throw new ArgumentNullException(nameof(consumerFactory));
             }
+
             _deserializer = deserializer;
             _consumerFactory = consumerFactory;
             _topicOffsets = new TopicOffsetsExtractor<Ignore, Message>(topicName, consumerFactory, adminClient, initTimeoutSeconds);
         }
 
-        public async Task StartUpdatingAsync(CancellationToken ct)
-        {
-            var offsets = await _topicOffsets.LoadWatermarksAsync(ct);
 
+        private async Task<IEnumerable<KeyValuePair<Key, Value>>> ConsumeInitialAsync
+            (IEnumerable<PartitionWatermark> offsets,
+            CancellationToken ct)
+        {
             var consumedEntities = await Task.WhenAll(offsets
                 .Select(endOfPartition =>
                     Task.Run(() =>
                     {
                         using var consumer = _consumerFactory();
-
                         var items = new List<KeyValuePair<Key, Value>>();
 
                         try
                         {
                             consumer.Assign(endOfPartition.CreatePartition());
-
                             ConsumeResult<Ignore, Message> result = default!;
                             do
                             {
@@ -77,7 +77,6 @@ namespace KafkaAsTable
                                 items.Add(new KeyValuePair<Key, Value>(key, value));
 
                             } while (result.IsWatermarkAchieved(endOfPartition.Watermark));
-
                             return items;
                         }
                         finally
@@ -87,12 +86,15 @@ namespace KafkaAsTable
 
                     }))).ConfigureAwait(false);
 
-            var items = consumedEntities.SelectMany(сonsumerResults => сonsumerResults);
+            return consumedEntities.SelectMany(сonsumerResults => сonsumerResults);
+        }
 
+        public async Task StartUpdatingAsync(CancellationToken ct)
+        {
+            var offsets = await _topicOffsets.LoadWatermarksAsync(ct);
+            var items = await ConsumeInitialAsync(offsets, ct);
             Snapshot = ImmutableDictionary.CreateRange(items);
-
             OnDumpLoaded?.Invoke(this, new KafkaInitTableArgs<Key, Value>(Snapshot));
-
             ContinueUpdateAfterDump(offsets, ct);
         }
 
@@ -108,12 +110,10 @@ namespace KafkaAsTable
             try
             {
                 consumer.AssignToOffset(offsets);
-
                 while (!ct.IsCancellationRequested)
                 {
                     var (k, v) = ConsumeItem(consumer, ct);
                     Snapshot = Snapshot.SetItem(k, v);
-
                     OnStateUpdated?.Invoke(this, new KafkaUpdateTableArgs<Key, Value>(Snapshot, k));
                 }
             }
