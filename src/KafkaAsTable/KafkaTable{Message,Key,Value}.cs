@@ -74,9 +74,21 @@ namespace KafkaAsTable
         {
             var topicWatermark = await _topicWatermarkLoader.LoadWatermarksAsync(_consumerFactory, ct);
             var initialState = await ConsumeInitialAsync(topicWatermark, ct);
-            Snapshot = ImmutableDictionary.CreateRange(initialState);
-            OnDumpLoaded?.Invoke(this, new KafkaInitTableArgs<Key, Value>(Snapshot));
+            FillSnapshot(initialState);
             ContinueFromWatermark(topicWatermark, ct);
+        }
+
+        private void FillSnapshot(IEnumerable<KeyValuePair<Key, Value>> items)
+        {
+            var dictionary = items.Aggregate(
+                new Dictionary<Key, Value>(),
+                (d, e) =>
+                {
+                    d[e.Key] = e.Value;
+                    return d;
+                });
+            Snapshot = ImmutableDictionary.CreateRange(dictionary);
+            OnDumpLoaded?.Invoke(this, new KafkaInitTableArgs<Key, Value>(Snapshot));
         }
 
         private IEnumerable<KeyValuePair<Key, Value>> ConsumeFromWatermark(PartitionWatermark watermark, CancellationToken ct)
@@ -88,7 +100,8 @@ namespace KafkaAsTable
                 ConsumeResult<Ignore, Message> result = default!;
                 do
                 {
-                    var (key, value) = ConsumeItem(consumer, ct);
+                    result = consumer.Consume(ct);
+                    var (key, value) = _deserializer(result.Message.Value);
                     yield return new KeyValuePair<Key, Value>(key, value);
 
                 } while (watermark.IsWatermarkAchievedBy(result));
@@ -112,14 +125,6 @@ namespace KafkaAsTable
             return consumedEntities.SelectMany(сonsumerResults => сonsumerResults);
         }
 
-
-
-        private (Key key, Value value) ConsumeItem(IConsumer<Ignore, Message> consumer, CancellationToken ct)
-        {
-            var result = consumer.Consume(ct);
-            return _deserializer(result.Message.Value);
-        }
-
         private void ContinueFromWatermark(TopicWatermark topicWatermark, CancellationToken ct)
         {
             using var consumer = _consumerFactory();
@@ -128,7 +133,8 @@ namespace KafkaAsTable
                 topicWatermark.AssignWithConsumer(consumer);
                 while (!ct.IsCancellationRequested)
                 {
-                    var (k, v) = ConsumeItem(consumer, ct);
+                    var result = consumer.Consume(ct);
+                    var (k, v) = _deserializer(result.Message.Value);
                     Snapshot = Snapshot.SetItem(k, v);
                     OnStateUpdated?.Invoke(this, new KafkaUpdateTableArgs<Key, Value>(Snapshot, k));
                 }
