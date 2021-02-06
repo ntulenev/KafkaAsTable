@@ -9,7 +9,7 @@ using Confluent.Kafka;
 
 using KafkaAsTable.Events;
 using KafkaAsTable.Metadata;
-using KafkaAsTable.Model;
+using KafkaAsTable.Watermarks;
 
 namespace KafkaAsTable
 {

@@ -4,7 +4,7 @@ using System.Linq;
 
 using Confluent.Kafka;
 
-namespace KafkaAsTable.Model
+namespace KafkaAsTable.Watermarks
 {
     public class TopicWatermark
     {

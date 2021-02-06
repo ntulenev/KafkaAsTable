@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Confluent.Kafka;
 
 using KafkaAsTable.Helpers;
-using KafkaAsTable.Model;
+using KafkaAsTable.Watermarks;
 
 namespace KafkaAsTable.Metadata
 {

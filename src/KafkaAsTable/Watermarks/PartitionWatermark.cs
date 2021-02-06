@@ -4,7 +4,7 @@ using Confluent.Kafka;
 
 using KafkaAsTable.Helpers;
 
-namespace KafkaAsTable.Model
+namespace KafkaAsTable.Watermarks
 {
     public class PartitionWatermark
     {
