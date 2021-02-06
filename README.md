@@ -1,2 +1,4 @@
 # KafkaAsTable
-Solution that allows to turn a Kafka topic into a Key/Value in-memory table.
+Allows to project Apache Kafka topic into a Key/Value in-memory table.
+
+![Diagram](KTable.png)
