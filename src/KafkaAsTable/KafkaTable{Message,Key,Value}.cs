@@ -14,19 +14,34 @@ using KafkaAsTable.Model;
 namespace KafkaAsTable
 {
     /// <summary>
-    /// Class that project topic in to Key-Value table
+    /// Class that project topic in to Key-Value table.
     /// </summary>
-    /// <typeparam name="Message">Topic message type</typeparam>
-    /// <typeparam name="Key">Table key</typeparam>
-    /// <typeparam name="Value">Table value</typeparam>
+    /// <typeparam name="Message">Topic message type.</typeparam>
+    /// <typeparam name="Key">Table key.</typeparam>
+    /// <typeparam name="Value">Table value.</typeparam>
     public class KafkaTable<Message, Key, Value> where Key : notnull
     {
+        /// <summary>
+        /// Event that fires when initial state is ready.
+        /// </summary>
         public event EventHandler<KafkaInitTableArgs<Key, Value>>? OnDumpLoaded;
 
+        /// <summary>
+        /// Event that fires when we have new update in topic.
+        /// </summary>
         public event EventHandler<KafkaUpdateTableArgs<Key, Value>>? OnStateUpdated;
 
+        /// <summary>
+        /// Current table state.
+        /// </summary>
         public ImmutableDictionary<Key, Value> Snapshot { get; private set; } = null!;
 
+        /// <summary>
+        /// Creates <see cref="KafkaTable{Message, Key, Value}"/> instance.
+        /// </summary>
+        /// <param name="deserializer">Convertor from topic message to Key/Value data."/></param>
+        /// <param name="consumerFactory">Consumer creation factory.</param>
+        /// <param name="topicWatermarkLoader">Watermark loader service.</param>
         public KafkaTable(Func<Message, (Key, Value)> deserializer,
                           Func<IConsumer<Ignore, Message>> consumerFactory,
                           ITopicWatermarkLoader topicWatermarkLoader)
@@ -49,6 +64,19 @@ namespace KafkaAsTable
             _deserializer = deserializer;
             _consumerFactory = consumerFactory;
             _topicWatermarkLoader = topicWatermarkLoader;
+        }
+
+        /// <summary>
+        /// Runs reading data from topic.
+        /// </summary>
+        /// <param name="ct">Cancellation token.</param>
+        public async Task StartUpdatingAsync(CancellationToken ct)
+        {
+            var topicWatermark = await _topicWatermarkLoader.LoadWatermarksAsync(_consumerFactory, ct);
+            var initialState = await ConsumeInitialAsync(topicWatermark, ct);
+            Snapshot = ImmutableDictionary.CreateRange(initialState);
+            OnDumpLoaded?.Invoke(this, new KafkaInitTableArgs<Key, Value>(Snapshot));
+            ContinueFromWatermark(topicWatermark, ct);
         }
 
         private IEnumerable<KeyValuePair<Key, Value>> ConsumeFromWatermark(PartitionWatermark watermark, CancellationToken ct)
@@ -84,14 +112,7 @@ namespace KafkaAsTable
             return consumedEntities.SelectMany(сonsumerResults => сonsumerResults);
         }
 
-        public async Task StartUpdatingAsync(CancellationToken ct)
-        {
-            var topicWatermark = await _topicWatermarkLoader.LoadWatermarksAsync(_consumerFactory, ct);
-            var initialState = await ConsumeInitialAsync(topicWatermark, ct);
-            Snapshot = ImmutableDictionary.CreateRange(initialState);
-            OnDumpLoaded?.Invoke(this, new KafkaInitTableArgs<Key, Value>(Snapshot));
-            ContinueFromWatermark(topicWatermark, ct);
-        }
+
 
         private (Key key, Value value) ConsumeItem(IConsumer<Ignore, Message> consumer, CancellationToken ct)
         {
