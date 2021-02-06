@@ -4,3 +4,5 @@
 /src/.vs
 /src/KafkaAsTable/obj
 /src/KafkaAsTable/bin
+/src/ExampleApp/obj
+/src/ExampleApp/bin
