@@ -6,7 +6,7 @@ Allows to project Apache Kafka topic into a Key/Value in-memory table.
 - Supports multi-partition topics
 - Supports notifications when initial state is ready and then when every new update is coming
 
-### ExampleApp
+### Example
 
 ```C#
 public record KafkaMessage(int Key, Guid Value);
