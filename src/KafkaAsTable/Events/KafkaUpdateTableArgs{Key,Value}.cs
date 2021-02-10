@@ -28,7 +28,7 @@ namespace KafkaAsTable.Events
         public KafkaUpdateTableArgs(ImmutableDictionary<Key, Value> state, Key key)
         {
             State = state ?? throw new ArgumentNullException(nameof(state));
-            UpdatedKey = key;
+            UpdatedKey = key ?? throw new ArgumentNullException(nameof(key));
         }
     }
 }
