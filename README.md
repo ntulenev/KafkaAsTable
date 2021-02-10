@@ -38,7 +38,7 @@ private static async Task RunKTableAsync(string topicName, CancellationToken ct)
 
     var adminClient = new AdminClientBuilder(adminConfig).Build();
 
-    var waterMarkLoader = new TopicWatermarkLoader(topicName, adminClient, 1000);
+    var waterMarkLoader = new TopicWatermarkLoader(new TopicName(topicName), adminClient, 1000);
 
     var kTable = new KafkaTable<string, int, Guid>(deserializer, createConsumer, waterMarkLoader);
     kTable.OnDumpLoaded += KTableOnDumpLoaded;
