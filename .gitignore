@@ -6,3 +6,5 @@
 /src/KafkaAsTable/bin
 /src/ExampleApp/obj
 /src/ExampleApp/bin
+/src/KafkaAsTable.Tests/obj
+/src/KafkaAsTable.Tests/bin
