@@ -10,8 +10,17 @@ using KafkaAsTable.Watermarks;
 
 namespace KafkaAsTable.Metadata
 {
+    /// <summary>
+    /// Service that loads <see cref="TopicWatermark"/>.
+    /// </summary>
     public class TopicWatermarkLoader : ITopicWatermarkLoader
     {
+        /// <summary>
+        /// Creates <see cref="TopicWatermarkLoader"/>.
+        /// </summary>
+        /// <param name="topicName">Topic name.</param>
+        /// <param name="adminClient">Kafla admin client.</param>
+        /// <param name="intTimeoutSeconds">Timeout in seconds for loading watermarks.</param>
         public TopicWatermarkLoader(string topicName,
                                     IAdminClient adminClient,
                                     int intTimeoutSeconds)
@@ -28,15 +37,7 @@ namespace KafkaAsTable.Metadata
             _topicName = topicName;
         }
 
-        private PartitionWatermark CreatePartitionWatermark<Key, Value>(IConsumer<Key, Value> consumer, TopicPartition topicPartition)
-        {
-            var watermarkOffsets = consumer.QueryWatermarkOffsets(
-                                    topicPartition,
-                                    TimeSpan.FromSeconds(_intTimeoutSeconds));
-
-            return new PartitionWatermark(_topicName, watermarkOffsets, topicPartition.Partition);
-        }
-
+        /// <inheritdoc/>
         public async Task<TopicWatermark> LoadWatermarksAsync<Key, Value>(Func<IConsumer<Key, Value>> consumerFactory, CancellationToken ct)
         {
             if (consumerFactory is null)
@@ -61,6 +62,15 @@ namespace KafkaAsTable.Metadata
             {
                 consumer.Close();
             }
+        }
+
+        private PartitionWatermark CreatePartitionWatermark<Key, Value>(IConsumer<Key, Value> consumer, TopicPartition topicPartition)
+        {
+            var watermarkOffsets = consumer.QueryWatermarkOffsets(
+                                    topicPartition,
+                                    TimeSpan.FromSeconds(_intTimeoutSeconds));
+
+            return new PartitionWatermark(_topicName, watermarkOffsets, topicPartition.Partition);
         }
 
         private readonly string _topicName;
