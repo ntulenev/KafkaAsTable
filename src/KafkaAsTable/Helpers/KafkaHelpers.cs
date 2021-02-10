@@ -4,6 +4,8 @@ using System.Linq;
 
 using Confluent.Kafka;
 
+using KafkaAsTable.Metadata;
+
 namespace KafkaAsTable.Helpers
 {
     /// <summary>
@@ -18,7 +20,7 @@ namespace KafkaAsTable.Helpers
         /// <param name="topicName">Topic name.</param>
         /// <param name="timeout">Timeout in seconds for loading watermarks.</param>
         public static IEnumerable<TopicPartition> SplitTopicOnPartitions(this IAdminClient adminClient,
-                                                                              string topicName,
+                                                                              TopicName topicName,
                                                                               int timeout)
         {
             if (adminClient is null)
@@ -26,13 +28,17 @@ namespace KafkaAsTable.Helpers
                 throw new ArgumentNullException(nameof(adminClient));
             }
 
-            KafkaValidationHelper.ValidateTopicName(topicName);
+            if (topicName is null)
+            {
+                throw new ArgumentNullException(nameof(TopicName));
+            }
 
-            var topicMeta = adminClient.GetMetadata(topicName, TimeSpan.FromSeconds(timeout));
+
+            var topicMeta = adminClient.GetMetadata(topicName.Value, TimeSpan.FromSeconds(timeout));
 
             var partitions = topicMeta.Topics.Single().Partitions;
 
-            return partitions.Select(partition => new TopicPartition(topicName, new Partition(partition.PartitionId)));
+            return partitions.Select(partition => new TopicPartition(topicName.Value, new Partition(partition.PartitionId)));
         }
     }
 }

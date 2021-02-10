@@ -2,18 +2,32 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace KafkaAsTable.Helpers
+namespace KafkaAsTable.Metadata
 {
     /// <summary>
-    /// Helper utility for Apache kafka validation.
+    /// Represents kafka topic name
     /// </summary>
-    public static class KafkaValidationHelper
+    public class TopicName
     {
+        /// <summary>
+        /// Validated tipic name
+        /// </summary>
+        public string Value { get; }
+
+        /// <summary>
+        /// Creates topic name
+        /// </summary>
+        public TopicName(string name)
+        {
+            ValidateTopicName(name);
+            Value = name;
+        }
+
         /// <summary>
         /// Validates topic name.
         /// </summary>
         /// <param name="topicName">Topic name.</param>
-        public static void ValidateTopicName(string topicName)
+        private static void ValidateTopicName(string topicName)
         {
             if (topicName is null)
             {

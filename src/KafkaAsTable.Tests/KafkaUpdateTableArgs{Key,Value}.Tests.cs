@@ -17,7 +17,7 @@ namespace KafkaAsTable.Tests
         {
             // Arrange
             ImmutableDictionary<object, object> state = null!;
-            object key = new object();
+            var key = new object();
 
             // Act
             var exception = Record.Exception(() => new KafkaUpdateTableArgs<object, object>(state, key));

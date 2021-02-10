@@ -21,11 +21,14 @@ namespace KafkaAsTable.Metadata
         /// <param name="topicName">Topic name.</param>
         /// <param name="adminClient">Kafla admin client.</param>
         /// <param name="intTimeoutSeconds">Timeout in seconds for loading watermarks.</param>
-        public TopicWatermarkLoader(string topicName,
+        public TopicWatermarkLoader(TopicName topicName,
                                     IAdminClient adminClient,
                                     int intTimeoutSeconds)
         {
-            KafkaValidationHelper.ValidateTopicName(topicName);
+            if (topicName is null)
+            {
+                throw new ArgumentNullException(nameof(topicName));
+            }
 
             if (adminClient is null)
             {
@@ -73,7 +76,7 @@ namespace KafkaAsTable.Metadata
             return new PartitionWatermark(_topicName, watermarkOffsets, topicPartition.Partition);
         }
 
-        private readonly string _topicName;
+        private readonly TopicName _topicName;
         private readonly IAdminClient _adminClient;
         private readonly int _intTimeoutSeconds;
     }

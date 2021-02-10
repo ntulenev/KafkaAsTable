@@ -3,6 +3,7 @@ using System;
 using Confluent.Kafka;
 
 using KafkaAsTable.Helpers;
+using KafkaAsTable.Metadata;
 
 namespace KafkaAsTable.Watermarks
 {
@@ -18,11 +19,14 @@ namespace KafkaAsTable.Watermarks
         /// <param name="topicName">Name of the topic.</param>
         /// <param name="offset">Raw kafka offset representation.</param>
         /// <param name="partition">Raw kafka partition representation.</param>
-        public PartitionWatermark(string topicName,
+        public PartitionWatermark(TopicName topicName,
                                   WatermarkOffsets offset,
                                   Partition partition)
         {
-            KafkaValidationHelper.ValidateTopicName(topicName);
+            if (topicName is null)
+            {
+                throw new ArgumentNullException(nameof(topicName));
+            }
 
             if (offset is null)
             {
@@ -61,7 +65,7 @@ namespace KafkaAsTable.Watermarks
         /// Creates single-partition topic for assigning with current offset.
         /// </summary>
         public TopicPartitionOffset CreateTopicPartitionWithHighOffset() =>
-            new TopicPartitionOffset(new TopicPartition(_topicName, _partition), _offset.High);
+            new TopicPartitionOffset(new TopicPartition(_topicName.Value, _partition), _offset.High);
 
         /// <summary>
         /// Assing consumer to a partition as topic.
@@ -69,19 +73,19 @@ namespace KafkaAsTable.Watermarks
         /// <typeparam name="K">Message key.</typeparam>
         /// <typeparam name="V">Message value.</typeparam>
         /// <param name="consumer">Consumer.</param>
-        public void AssingWithConsumer<K,V>(IConsumer<K, V> consumer)
+        public void AssingWithConsumer<K, V>(IConsumer<K, V> consumer)
         {
             if (consumer is null)
             {
                 throw new ArgumentNullException(nameof(consumer));
             }
 
-            consumer.Assign(new TopicPartition(_topicName, _partition));
+            consumer.Assign(new TopicPartition(_topicName.Value, _partition));
         }
 
         private readonly Partition _partition;
         private readonly WatermarkOffsets _offset;
-        private readonly string _topicName;
+        private readonly TopicName _topicName;
 
     }
 }

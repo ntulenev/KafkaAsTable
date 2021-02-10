@@ -44,9 +44,11 @@ namespace ExampleApp
             }
         }
 
-        #pragma warning disable IDE1006 // Naming Styles
+#pragma warning disable IDE1006 // Naming Styles
+#pragma warning disable IDE0060 // Remove unused parameter
         public static async Task Main(string[] args)
-        #pragma warning restore IDE1006 // Naming Styles
+#pragma warning restore IDE0060 // Remove unused parameter
+#pragma warning restore IDE1006 // Naming Styles
         {
             var cts = new CancellationTokenSource();
 
@@ -92,7 +94,7 @@ namespace ExampleApp
 
             var adminClient = new AdminClientBuilder(adminConfig).Build();
 
-            var waterMarkLoader = new TopicWatermarkLoader(topicName, adminClient, 1000);
+            var waterMarkLoader = new TopicWatermarkLoader(new TopicName(topicName), adminClient, 1000);
 
             var kTable = new KafkaTable<string, int, Guid>(deserializer, createConsumer, waterMarkLoader);
             kTable.OnDumpLoaded += KTableOnDumpLoaded;
