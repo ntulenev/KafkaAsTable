@@ -14,9 +14,14 @@ namespace ExampleApp
 {
     public record KafkaMessage(int Key, Guid Value);
 
+    /// <summary>
+    /// This example shows how to read table from topic
+    /// </summary>
     public class Program
     {
-
+        /// <summary>
+        /// Task that write data in kafka every 1 second to emulate updates
+        /// </summary>
         private static async Task FillKafkaWithDataAsync(string topicName, CancellationToken ct)
         {
             var config = new ProducerConfig { BootstrapServers = GetServers() };
@@ -38,9 +43,10 @@ namespace ExampleApp
                 await Task.Delay(1000, ct);
             }
         }
-#pragma warning disable IDE1006 // Naming Styles
+
+        #pragma warning disable IDE1006 // Naming Styles
         public static async Task Main(string[] args)
-#pragma warning restore IDE1006 // Naming Styles
+        #pragma warning restore IDE1006 // Naming Styles
         {
             var cts = new CancellationTokenSource();
 
@@ -56,6 +62,9 @@ namespace ExampleApp
             await Task.WhenAll(kTableTask, kafkaLoaderTask);
         }
 
+        /// <summary>
+        /// This task reads data from topic to in-memory table
+        /// </summary>
         private static async Task RunKTableAsync(string topicName, CancellationToken ct)
         {
             static (int, Guid) deserializer(string message)
@@ -109,7 +118,7 @@ namespace ExampleApp
 
         private static readonly List<string> _bootstrapServers = new List<string>()
         {
-            //TODO Add topics
+            //TODO Add test cluster servers 
         };
     }
 }
