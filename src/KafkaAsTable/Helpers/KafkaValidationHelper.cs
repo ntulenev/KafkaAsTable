@@ -4,8 +4,15 @@ using System.Text.RegularExpressions;
 
 namespace KafkaAsTable.Helpers
 {
+    /// <summary>
+    /// Helper utility for Apache kafka validation.
+    /// </summary>
     public static class KafkaValidationHelper
     {
+        /// <summary>
+        /// Validates topic name.
+        /// </summary>
+        /// <param name="topicName">Topic name.</param>
         public static void ValidateTopicName(string topicName)
         {
             if (topicName is null)
