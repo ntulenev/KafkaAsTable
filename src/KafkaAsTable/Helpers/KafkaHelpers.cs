@@ -33,6 +33,12 @@ namespace KafkaAsTable.Helpers
                 throw new ArgumentNullException(nameof(TopicName));
             }
 
+            if (timeout <= 0)
+            {
+                throw new ArgumentException(
+                    "The watermark timeout should be positive.");
+            }
+
 
             var topicMeta = adminClient.GetMetadata(topicName.Value, TimeSpan.FromSeconds(timeout));
 
