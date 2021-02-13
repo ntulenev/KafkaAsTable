@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Confluent.Kafka;
 
@@ -80,5 +82,25 @@ namespace KafkaAsTable.Tests
             // Assert
             exception.Should().BeNull();
         }
+
+        [Fact(DisplayName = "Can't load watermarks with empty consumer func.")]
+        [Trait("Category", "Unit")]
+        public async Task CantLoadWatermarksWithNullConsumerFuncAsync()
+        {
+            // Arrange
+            var topic = new TopicName("test");
+            var client = (new Mock<IAdminClient>()).Object;
+            var timeout = 1000;
+            var loader = new TopicWatermarkLoader(topic, client, timeout);
+            Func<IConsumer<object, object>> consumerFactory = null!;
+
+            // Act
+            var exception = await Record.ExceptionAsync(async () => _ = await loader.LoadWatermarksAsync(consumerFactory, CancellationToken.None));
+
+            // Assert
+            exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
+        }
+
+        //TODO Add test on valid LoadWatermarksAsync execution
     }
 }
