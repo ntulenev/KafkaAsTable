@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,6 +8,8 @@ using Confluent.Kafka;
 using FluentAssertions;
 
 using KafkaAsTable.Metadata;
+using KafkaAsTable.Watermarks;
+using KafkaAsTable.Helpers;
 
 using Moq;
 
@@ -101,6 +104,54 @@ namespace KafkaAsTable.Tests
             exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
         }
 
-        //TODO Add test on valid LoadWatermarksAsync execution
+        [Fact(DisplayName = "Can load watermarks with valid params.")]
+        [Trait("Category", "Unit")]
+        public async Task CanLoadWatermarksWithValidParamsAsync()
+        {
+            // Arrange
+            var topic = new TopicName("test");
+            var clientMock = new Mock<IAdminClient>();
+            var client = clientMock.Object;
+            var timeout = 1000;
+            var loader = new TopicWatermarkLoader(topic, client, timeout);
+            var consumerMock = new Mock<IConsumer<object, object>>();
+            IConsumer<object, object> consumerFactory() => consumerMock.Object;
+
+            var adminClientPartition = new TopicPartition(topic.Value, new Partition(1));
+
+            var adminParitions = new[] { adminClientPartition };
+
+            var borkerMeta = new BrokerMetadata(1, "testHost", 1000);
+
+            var partitionMeta = new PartitionMetadata(1, 1, new[] { 1 }, new[] { 1 }, null);
+
+            var topicMeta = new TopicMetadata(topic.Value, new[] { partitionMeta }.ToList(), null);
+
+            var meta = new Confluent.Kafka.Metadata(
+                    new[] { borkerMeta }.ToList(),
+                    new[] { topicMeta }.ToList(), 1, "test"
+                    );
+
+            clientMock.Setup(c => c.GetMetadata(topic.Value, TimeSpan.FromSeconds(timeout))).Returns(meta);
+
+            var offets = new WatermarkOffsets(new Offset(1), new Offset(2));
+
+            consumerMock.Setup(x => x.QueryWatermarkOffsets(adminClientPartition, TimeSpan.FromSeconds(timeout))).Returns(offets);
+
+            TopicWatermark result = null!;
+
+            // Act
+            var exception = await Record.ExceptionAsync(async () => result = await loader.LoadWatermarksAsync(consumerFactory, CancellationToken.None));
+
+            // Assert
+            exception.Should().BeNull();
+            consumerMock.Verify(x => x.Close(), Times.Once);
+            consumerMock.Verify(x => x.Dispose(), Times.Once);
+            result.Should().NotBeNull();
+            var watermarks = result.Watermarks.ToList();
+            watermarks.Should().ContainSingle();
+            clientMock.Verify(c => c.GetMetadata(topic.Value, TimeSpan.FromSeconds(timeout)), Times.Once);
+            consumerMock.Verify(x => x.QueryWatermarkOffsets(adminClientPartition, TimeSpan.FromSeconds(timeout)), Times.Once);
+        }
     }
 }
