@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Collections.Generic;
 
 using Confluent.Kafka;
 
@@ -6,10 +8,11 @@ using Xunit;
 
 using KafkaAsTable.Helpers;
 using KafkaAsTable.Metadata;
+
 using FluentAssertions;
+
 using Moq;
-using System.Linq;
-using System.Collections.Generic;
+
 
 namespace KafkaAsTable.Tests
 {
