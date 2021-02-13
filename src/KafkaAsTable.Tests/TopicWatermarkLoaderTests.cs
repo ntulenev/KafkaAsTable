@@ -9,7 +9,6 @@ using FluentAssertions;
 
 using KafkaAsTable.Metadata;
 using KafkaAsTable.Watermarks;
-using KafkaAsTable.Helpers;
 
 using Moq;
 
