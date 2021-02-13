@@ -14,32 +14,15 @@ namespace KafkaAsTable.Tests
 {
     public class TopicWatermarkLoaderTests
     {
-        [Fact(DisplayName = "Topic name can't be null.")]
+        [Fact(DisplayName = "TopicWatermarkLoader Topic name can't be null.")]
         [Trait("Category", "Unit")]
         public void CantCreateLoaderWithEmptyTopic()
         {
 
             // Arrange
             TopicName topic = null!;
-            IAdminClient client = (new Mock<IAdminClient>()).Object;
-            int timeout = 1000;
-
-            // Act
-            var exception = Record.Exception(() => new TopicWatermarkLoader(topic,client,timeout));
-
-            // Assert
-            exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
-        }
-
-        [Fact(DisplayName = "Admin client can't be null.")]
-        [Trait("Category", "Unit")]
-        public void CantCreateLoaderWithEmptyAdminClient()
-        {
-
-            // Arrange
-            var topic = new TopicName("test");
-            IAdminClient client = null!;
-            int timeout = 1000;
+            var client = (new Mock<IAdminClient>()).Object;
+            var timeout = 1000;
 
             // Act
             var exception = Record.Exception(() => new TopicWatermarkLoader(topic, client, timeout));
@@ -48,7 +31,24 @@ namespace KafkaAsTable.Tests
             exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
         }
 
-        [Theory(DisplayName = "Timeout can't be non positive.")]
+        [Fact(DisplayName = "TopicWatermarkLoader Admin client can't be null.")]
+        [Trait("Category", "Unit")]
+        public void CantCreateLoaderWithEmptyAdminClient()
+        {
+
+            // Arrange
+            var topic = new TopicName("test");
+            IAdminClient client = null!;
+            var timeout = 1000;
+
+            // Act
+            var exception = Record.Exception(() => new TopicWatermarkLoader(topic, client, timeout));
+
+            // Assert
+            exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
+        }
+
+        [Theory(DisplayName = "TopicWatermarkLoader Timeout can't be non positive.")]
         [Trait("Category", "Unit")]
         [InlineData(0)]
         [InlineData(-1)]
@@ -63,6 +63,22 @@ namespace KafkaAsTable.Tests
 
             // Assert
             exception.Should().NotBeNull().And.BeOfType<ArgumentException>();
+        }
+
+        [Fact(DisplayName = "TopicWatermarkLoader could be created with valid params.")]
+        [Trait("Category", "Unit")]
+        public void CanCreateWithValidParams()
+        {
+            // Arrange
+            var topic = new TopicName("test");
+            var client = (new Mock<IAdminClient>()).Object;
+            var timeout = 1000;
+
+            // Act
+            var exception = Record.Exception(() => new TopicWatermarkLoader(topic, client, timeout));
+
+            // Assert
+            exception.Should().BeNull();
         }
     }
 }
