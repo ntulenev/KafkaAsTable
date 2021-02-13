@@ -36,7 +36,7 @@ namespace KafkaAsTable.Helpers
             if (timeout <= 0)
             {
                 throw new ArgumentException(
-                    "The watermark timeout should be positive.");
+                    "The watermark timeout should be positive.", nameof(timeout));
             }
 
 

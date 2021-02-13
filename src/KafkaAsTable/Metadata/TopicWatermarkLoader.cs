@@ -38,7 +38,7 @@ namespace KafkaAsTable.Metadata
             if (intTimeoutSeconds <= 0)
             {
                 throw new ArgumentException(
-                    "The watermark timeout should be positive.");
+                    "The watermark timeout should be positive.", nameof(intTimeoutSeconds));
             }
 
             _intTimeoutSeconds = intTimeoutSeconds;
