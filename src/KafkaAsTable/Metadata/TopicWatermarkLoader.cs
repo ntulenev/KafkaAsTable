@@ -35,6 +35,12 @@ namespace KafkaAsTable.Metadata
                 throw new ArgumentNullException(nameof(adminClient));
             }
 
+            if (intTimeoutSeconds <= 0)
+            {
+                throw new ArgumentException(
+                    "The watermark timeout should be positive.");
+            }
+
             _intTimeoutSeconds = intTimeoutSeconds;
             _adminClient = adminClient;
             _topicName = topicName;
