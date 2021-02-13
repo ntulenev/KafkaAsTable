@@ -18,7 +18,7 @@ namespace KafkaAsTable.Tests
 {
     public class KafkaHelpersTests
     {
-        [Fact(DisplayName = "SplitTopicOnPartitions cant be run on null admin client")]
+        [Fact(DisplayName = "SplitTopicOnPartitions can't be run on null admin client.")]
         [Trait("Category", "Unit")]
         public void CantCreateSplitTopicWithNullAdminClient()
         {
@@ -35,7 +35,7 @@ namespace KafkaAsTable.Tests
             exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
         }
 
-        [Fact(DisplayName = "SplitTopicOnPartitions cant be run on null topic name")]
+        [Fact(DisplayName = "SplitTopicOnPartitions can't be run on null topic name.")]
         [Trait("Category", "Unit")]
         public void CantCreateSplitTopicWithNullNameClient()
         {
@@ -52,7 +52,7 @@ namespace KafkaAsTable.Tests
             exception.Should().NotBeNull().And.BeOfType<ArgumentNullException>();
         }
 
-        [Theory(DisplayName = "SplitTopicOnPartitions cant be run on non positive timeout")]
+        [Theory(DisplayName = "SplitTopicOnPartitions can't be run on non positive timeout.")]
         [InlineData(0)]
         [InlineData(-1)]
         [Trait("Category", "Unit")]
@@ -70,9 +70,9 @@ namespace KafkaAsTable.Tests
             exception.Should().NotBeNull().And.BeOfType<ArgumentException>();
         }
 
-        [Fact(DisplayName = "SplitTopicCouldBeRun with valid params")]
+        [Fact(DisplayName = "SplitTopicOnPartitions could be run with valid params.")]
         [Trait("Category", "Unit")]
-        public void SplitTopicCouldBeRunOnValidParams()
+        public void CreateSplitTopicCouldBeRunOnValidParams()
         {
 
             // Arrange
@@ -107,6 +107,7 @@ namespace KafkaAsTable.Tests
             result.Should().ContainSingle();
             result.Single().Topic.Should().Be(topic.Value);
             result.Single().Partition.Value.Should().Be(partitionMeta.PartitionId);
+            clientMoq.Verify(c => c.GetMetadata(topic.Value, TimeSpan.FromSeconds(timeout)), Times.Once);
         }
     }
 }
