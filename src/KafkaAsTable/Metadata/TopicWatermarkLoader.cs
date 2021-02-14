@@ -1,11 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Confluent.Kafka;
 
-using KafkaAsTable.Helpers;
 using KafkaAsTable.Watermarks;
 
 namespace KafkaAsTable.Metadata
@@ -58,7 +58,7 @@ namespace KafkaAsTable.Metadata
 
             try
             {
-                var partitions = _adminClient.SplitTopicOnPartitions(_topicName, _intTimeoutSeconds);
+                var partitions = SplitTopicOnPartitions();
 
                 var partitionWatermarks = await Task.WhenAll(partitions.Select(
                             topicPartition => Task.Run(() =>
@@ -71,6 +71,15 @@ namespace KafkaAsTable.Metadata
             {
                 consumer.Close();
             }
+        }
+
+        public IEnumerable<TopicPartition> SplitTopicOnPartitions()
+        {
+            var topicMeta = _adminClient.GetMetadata(_topicName.Value, TimeSpan.FromSeconds(_intTimeoutSeconds));
+
+            var partitions = topicMeta.Topics.Single().Partitions;
+
+            return partitions.Select(partition => new TopicPartition(_topicName.Value, new Partition(partition.PartitionId)));
         }
 
         private PartitionWatermark CreatePartitionWatermark<Key, Value>(IConsumer<Key, Value> consumer, TopicPartition topicPartition)

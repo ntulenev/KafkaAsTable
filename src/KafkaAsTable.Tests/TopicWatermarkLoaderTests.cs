@@ -144,13 +144,26 @@ namespace KafkaAsTable.Tests
 
             // Assert
             exception.Should().BeNull();
+
             consumerMock.Verify(x => x.Close(), Times.Once);
+
             consumerMock.Verify(x => x.Dispose(), Times.Once);
+
             result.Should().NotBeNull();
+
             var watermarks = result.Watermarks.ToList();
+
             watermarks.Should().ContainSingle();
+
             clientMock.Verify(c => c.GetMetadata(topic.Value, TimeSpan.FromSeconds(timeout)), Times.Once);
+
             consumerMock.Verify(x => x.QueryWatermarkOffsets(adminClientPartition, TimeSpan.FromSeconds(timeout)), Times.Once);
+
+            watermarks.Single().TopicName.Should().Be(topic);
+
+            watermarks.Single().Partition.Value.Should().Be(partitionMeta.PartitionId);
+
+            watermarks.Single().Offset.Should().Be(offets);
         }
     }
 }

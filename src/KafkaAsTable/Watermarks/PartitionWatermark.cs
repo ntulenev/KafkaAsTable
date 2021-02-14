@@ -2,7 +2,6 @@ using System;
 
 using Confluent.Kafka;
 
-using KafkaAsTable.Helpers;
 using KafkaAsTable.Metadata;
 
 namespace KafkaAsTable.Watermarks
@@ -13,6 +12,12 @@ namespace KafkaAsTable.Watermarks
     /// </summary>
     public class PartitionWatermark
     {
+        public Partition Partition => _partition;
+
+        public WatermarkOffsets Offset => _offset;
+
+        public TopicName TopicName => _topicName;
+
         /// <summary>
         /// Creates partition offset watermark.
         /// </summary>

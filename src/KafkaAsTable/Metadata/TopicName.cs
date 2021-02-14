@@ -23,6 +23,20 @@ namespace KafkaAsTable.Metadata
             Value = name;
         }
 
+        /// <inheritdoc/>
+        public override bool Equals(object obj)
+        {
+            if (obj is TopicName tName)
+            {
+                return Value.Equals(tName.Value);
+            }
+
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(Value);
+
         /// <summary>
         /// Validates topic name.
         /// </summary>
