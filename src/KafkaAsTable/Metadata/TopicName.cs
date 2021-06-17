@@ -54,12 +54,6 @@ namespace KafkaAsTable.Metadata
                     "The topic name cannot be empty or consist of whitespaces.", nameof(topicName));
             }
 
-            if (string.IsNullOrWhiteSpace(topicName))
-            {
-                throw new ArgumentException(
-                    "The topic name cannot be empty or consist of whitespaces.", nameof(topicName));
-            }
-
             if (topicName.Any(character => char.IsWhiteSpace(character)))
             {
                 throw new ArgumentException(
