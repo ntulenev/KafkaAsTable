@@ -1,5 +1,3 @@
-using System;
-
 using Confluent.Kafka;
 
 using KafkaAsTable.Metadata;

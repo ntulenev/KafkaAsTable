@@ -1,5 +1,3 @@
-using System;
-
 using FluentAssertions;
 
 using KafkaAsTable.Metadata;
